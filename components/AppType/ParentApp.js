@@ -11,14 +11,14 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-
 export default function ParentApp() {
   const [pairingCode, setPairingCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [childData, setChildData] = useState(null);
   const navigation = useNavigation();
-
+  const [ws, setWs] = useState(null);
   useEffect(() => {
-    const generatePairingCode = async () => {
+    const initializeParent = async () => {
       try {
         const storedCode = await AsyncStorage.getItem("pairingCode");
         if (storedCode) {
@@ -30,29 +30,54 @@ export default function ParentApp() {
           await AsyncStorage.setItem("pairingCode", newCode);
           setPairingCode(newCode);
         }
+        const websocket = new WebSocket("ws://127.0.0.1:5000");
+        setWs(websocket);
+        websocket.onopen = () => {
+          websocket.send(
+            JSON.stringify({
+              type: "register",
+              clientId: `parent-${newCode || storedCode}`,
+              clientType: "parent",
+              childId: null,
+            })
+          );
+        };
+        websocket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.type === "childUpdate") {
+            setChildData(data.data);
+            console.log("Received child data:", data.data);
+          }
+        };
+        websocket.onerror = (error) => {
+          console.log("WebSocket error:", error);
+        };
+        websocket.onclose = () => {
+          console.log("WebSocket connection closed");
+        };
+        return () => {
+          websocket.close();
+        };
       } catch (error) {
-        console.log("Error generating pairing code:", error);
+        console.log("Error initializing parent:", error);
       }
     };
-    generatePairingCode();
+    initializeParent();
   }, []);
-  const [string, setString] = useState(null);
-
   const copyToClipboard = () => {
     if (pairingCode) {
-      setString(pairingCode);
+      navigator.clipboard.writeText(pairingCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } else {
       console.log("No pairing code to copy!");
     }
   };
-
   const goBack = () => {
     navigation.navigate("InitialPage");
     AsyncStorage.clear();
+    if (ws) ws.close();
   };
-
   return (
     <View flex={1} bg="gray.100">
       <Pressable onPress={goBack} position="absolute" top={10} p={2} zIndex={1}>
@@ -104,6 +129,18 @@ export default function ParentApp() {
           Share this code with the child device to establish a secure
           connection.
         </Text>
+        {}
+        {childData && (
+          <VStack space={2} alignItems="center">
+            <Text fontSize="md" color="purple.600">
+              Child Location: {childData.location?.lat},{" "}
+              {childData.location?.lng}
+            </Text>
+            <Text fontSize="md" color="purple.600">
+              App Usage: {childData.appUsage?.join(", ")}
+            </Text>
+          </VStack>
+        )}
       </VStack>
     </View>
   );

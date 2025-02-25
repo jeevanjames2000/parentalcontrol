@@ -27,6 +27,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function Home() {
   const [selectedDevice, setSelectedDevice] = useState("Google Pixel 6a");
   const { isOpen, onOpen, onClose } = useDisclose();
@@ -68,6 +69,10 @@ export default function Home() {
     }
   };
   const navigation = useNavigation();
+  const goBack = () => {
+    navigation.navigate("InitialPage");
+    AsyncStorage.clear();
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -113,7 +118,7 @@ export default function Home() {
                   color="blue.500"
                 />
               }
-              onPress={() => console.log("Add device pressed")}
+              onPress={goBack}
             />
           </HStack>
         </View>

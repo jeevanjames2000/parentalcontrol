@@ -1,44 +1,72 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { VStack, Text, Input, Button, Toast, Icon, View } from "native-base";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-
 export default function ChildApp() {
   const [pairingCode, setPairingCode] = useState("");
   const [connected, setConnected] = useState(false);
-
+  const [ws, setWs] = useState(null);
+  const navigation = useNavigation();
   const connectToParent = async () => {
     try {
-      const deviceId = (await AsyncStorage.getItem("deviceId")) || uuid.v4();
+      const deviceId =
+        (await AsyncStorage.getItem("deviceId")) || `child-${Date.now()}`;
       await AsyncStorage.setItem("deviceId", deviceId);
-
-      const response = await axios.post(
-        "https://your-api.com/api/verify-pairing",
-        {
-          pairingCode,
-          childDeviceId: deviceId,
-        }
-      );
-
-      if (response.data.success) {
+      const websocket = new WebSocket("ws://127.0.0.1:5000");
+      setWs(websocket);
+      websocket.onopen = () => {
+        websocket.send(
+          JSON.stringify({
+            type: "register",
+            clientId: deviceId,
+            clientType: "child",
+          })
+        );
         setConnected(true);
         Toast.show({ description: "Connected to parent successfully!" });
-        await AsyncStorage.setItem(
-          "connectedParentId",
-          response.data.parentDeviceId
-        );
-      } else {
-        Toast.show({ description: "Invalid pairing code!" });
-      }
+      };
+      websocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.status === "registered") {
+          console.log("Child registered:", data.clientId);
+        }
+      };
+      websocket.onerror = (error) => {
+        console.log("WebSocket error:", error);
+        Toast.show({ description: "Connection failed. Try again." });
+      };
+      websocket.onclose = () => {
+        console.log("WebSocket connection closed");
+        setConnected(false);
+      };
     } catch (error) {
       console.log("Error connecting to parent:", error);
       Toast.show({ description: "Connection failed. Try again." });
     }
   };
-
+  useEffect(() => {
+    if (connected && ws && ws.readyState === WebSocket.OPEN) {
+      const interval = setInterval(() => {
+        const childData = {
+          type: "childData",
+          clientId: `child-${Date.now()}`,
+          payload: {
+            location: { lat: 37.7749, lng: -122.4194 },
+            appUsage: ["app1", "app2"],
+          },
+        };
+        ws.send(JSON.stringify(childData));
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [connected, ws]);
+  const goBack = () => {
+    navigation.navigate("InitialPage");
+    AsyncStorage.clear();
+    if (ws) ws.close();
+  };
   if (connected) {
     return (
       <VStack flex={1} justifyContent="center" alignItems="center">
@@ -48,14 +76,8 @@ export default function ChildApp() {
       </VStack>
     );
   }
-  const navigation = useNavigation();
-
-  const goBack = () => {
-    navigation.navigate("InitialPage");
-    AsyncStorage.clear();
-  };
   return (
-    <View flex={1} position={"relative"} top={10}>
+    <View flex={1} position="relative" top={10}>
       <Pressable
         onPress={goBack}
         position="absolute"
