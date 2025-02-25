@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-import { VStack, Text, Input, Button, Toast } from "native-base";
+import { VStack, Text, Input, Button, Toast, Icon, View } from "native-base";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { Pressable } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ChildApp() {
   const [pairingCode, setPairingCode] = useState("");
@@ -45,46 +48,68 @@ export default function ChildApp() {
       </VStack>
     );
   }
+  const navigation = useNavigation();
 
+  const goBack = () => {
+    navigation.navigate("InitialPage");
+    AsyncStorage.clear();
+  };
   return (
-    <VStack
-      flex={1}
-      justifyContent="center"
-      alignItems="center"
-      bg="gray.100"
-      space={6}
-      p={5}
-    >
-      <Text fontSize="2xl" fontWeight="bold" color="blue.600">
-        Child App
-      </Text>
-      <Text fontSize="lg" color="gray.500" textAlign="center">
-        Enter the pairing code from your parent.
-      </Text>
-      <Input
-        placeholder="Enter 6-digit code"
-        value={pairingCode}
-        onChangeText={setPairingCode}
-        variant="rounded"
-        w="80%"
-        maxW="300"
-        p={4}
-        fontSize="lg"
-        textAlign="center"
-        bg="white"
-        shadow={2}
-        keyboardType="numeric"
-        maxLength={6}
-      />
-      <Button
-        bg="blue.500"
-        onPress={connectToParent}
-        isDisabled={pairingCode.length < 6}
+    <View flex={1} position={"relative"} top={10}>
+      <Pressable
+        onPress={goBack}
+        position="absolute"
+        top={20}
+        left={10}
+        p={2}
+        zIndex={1}
       >
-        <Text fontSize="md" color="white">
-          Connect to Parent
+        <Icon
+          as={MaterialIcons}
+          name="arrow-back"
+          size="lg"
+          color="purple.600"
+        />
+      </Pressable>
+      <VStack
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        bg="gray.100"
+        space={6}
+        p={5}
+      >
+        <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+          Child App
         </Text>
-      </Button>
-    </VStack>
+        <Text fontSize="lg" color="gray.500" textAlign="center">
+          Enter the pairing code from your parent.
+        </Text>
+        <Input
+          placeholder="Enter 6-digit code"
+          value={pairingCode}
+          onChangeText={setPairingCode}
+          variant="rounded"
+          w="80%"
+          maxW="300"
+          p={4}
+          fontSize="lg"
+          textAlign="center"
+          bg="white"
+          shadow={2}
+          keyboardType="numeric"
+          maxLength={6}
+        />
+        <Button
+          bg="blue.500"
+          onPress={connectToParent}
+          isDisabled={pairingCode.length < 6}
+        >
+          <Text fontSize="md" color="white">
+            Connect to Parent
+          </Text>
+        </Button>
+      </VStack>
+    </View>
   );
 }

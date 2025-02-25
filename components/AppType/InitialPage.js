@@ -70,7 +70,7 @@ export default function InitialPage() {
         easing: Easing.ease,
         useNativeDriver: true,
       }).start(() => {
-        navigation.replace(appType === "Parents" ? "HomeTabs" : "ChildsApp");
+        navigation.replace(appType === "Parents" ? "Parents" : "ChildsApp");
       });
     } catch (error) {
       console.log("Error saving app type:", error);
@@ -104,14 +104,6 @@ export default function InitialPage() {
           mb={8}
           alignItems="center"
         >
-          <Image
-            source={{
-              uri: "https://via.placeholder.com/150",
-            }}
-            alt="App Logo"
-            size={150}
-            borderRadius={15}
-          />
           <Text fontSize="2xl" fontWeight="bold" color="purple.600" mt={4}>
             Welcome to Family Guard
           </Text>
@@ -119,7 +111,14 @@ export default function InitialPage() {
             Select the app type for your device:
           </Text>
         </Box>
-        <VStack space={4} w="80%" maxW="300">
+        <VStack
+          space={4}
+          w="100%"
+          p={5}
+          flexDirection={"row"}
+          display={"flex"}
+          justifyContent={"space-between"}
+        >
           <Pressable
             onPress={() => handleAppSelection("Parents")}
             bg="purple.500"

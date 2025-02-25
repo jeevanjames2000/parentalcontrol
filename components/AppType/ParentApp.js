@@ -5,17 +5,17 @@ import {
   Text,
   Button,
   Input,
-  Center,
   Icon,
-  Clipboard,
+  Pressable,
 } from "native-base";
 import { MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 
 export default function ParentApp() {
   const [pairingCode, setPairingCode] = useState("");
   const [copied, setCopied] = useState(false);
-  const [childDeviceId, setChildDeviceId] = useState(null);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const generatePairingCode = async () => {
@@ -36,16 +36,40 @@ export default function ParentApp() {
     };
     generatePairingCode();
   }, []);
+  const [string, setString] = useState(null);
 
   const copyToClipboard = () => {
-    Clipboard.setString(pairingCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (pairingCode) {
+      setString(pairingCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      console.log("No pairing code to copy!");
+    }
+  };
+
+  const goBack = () => {
+    navigation.navigate("InitialPage");
+    AsyncStorage.clear();
   };
 
   return (
-    <View flex={1} justifyContent="center" alignItems="center" bg="gray.100">
-      <VStack space={6} alignItems="center" p={5}>
+    <View flex={1} bg="gray.100">
+      <Pressable onPress={goBack} position="absolute" top={10} p={2} zIndex={1}>
+        <Icon
+          as={MaterialIcons}
+          name="arrow-back"
+          size="lg"
+          color="purple.600"
+        />
+      </Pressable>
+      <VStack
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        space={6}
+        p={5}
+      >
         <Text fontSize="2xl" fontWeight="bold" color="purple.600">
           Parent App
         </Text>
