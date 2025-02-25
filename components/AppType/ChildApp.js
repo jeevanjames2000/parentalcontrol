@@ -1,143 +1,90 @@
-import React, { useState, useEffect } from "react";
-import { View, VStack, Text, Input, Button, Center, Toast } from "native-base";
+import React, { useState } from "react";
+import { VStack, Text, Input, Button, Toast } from "native-base";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  RTCPeerConnection,
-  RTCIceCandidate,
-  RTCSessionDescription,
-} from "react-native-webrtc";
-import uuid from "react-native-uuid";
+import axios from "axios";
+
 export default function ChildApp() {
   const [pairingCode, setPairingCode] = useState("");
   const [connected, setConnected] = useState(false);
-  const [parentDeviceId, setParentDeviceId] = useState(null);
-  useEffect(() => {
-    const loadDeviceId = async () => {
-      try {
-        const deviceId = await AsyncStorage.getItem("deviceId");
-        if (!deviceId) {
-          const newDeviceId = uuid.v4();
-          await AsyncStorage.setItem("deviceId", newDeviceId);
-        }
-      } catch (error) {
-        console.log("Error loading device ID:", error);
-      }
-    };
-    loadDeviceId();
-  }, []);
-  const handlePairing = async () => {
+
+  const connectToParent = async () => {
     try {
-      const parentCode = await AsyncStorage.getItem("pairingCode");
-      if (pairingCode === parentCode) {
-        const childDeviceId = await AsyncStorage.getItem("deviceId");
-        await AsyncStorage.setItem("pairedWith", childDeviceId);
-        establishSecureConnection(childDeviceId);
+      const deviceId = (await AsyncStorage.getItem("deviceId")) || uuid.v4();
+      await AsyncStorage.setItem("deviceId", deviceId);
+
+      const response = await axios.post(
+        "https://your-api.com/api/verify-pairing",
+        {
+          pairingCode,
+          childDeviceId: deviceId,
+        }
+      );
+
+      if (response.data.success) {
         setConnected(true);
-        Toast.show({
-          title: "Connected Successfully",
-          status: "success",
-          duration: 3000,
-        });
+        Toast.show({ description: "Connected to parent successfully!" });
+        await AsyncStorage.setItem(
+          "connectedParentId",
+          response.data.parentDeviceId
+        );
       } else {
-        setError("Invalid pairing code. Please try again.");
-        Toast.show({
-          title: "Invalid Code",
-          status: "error",
-          duration: 3000,
-        });
+        Toast.show({ description: "Invalid pairing code!" });
       }
     } catch (error) {
-      console.log("Pairing Error:", error);
-      setError("Failed to connect. Please try again.");
-      Toast.show({
-        title: "Connection Failed",
-        status: "error",
-        duration: 3000,
-      });
+      console.log("Error connecting to parent:", error);
+      Toast.show({ description: "Connection failed. Try again." });
     }
   };
-  const establishSecureConnection = async (childDeviceId) => {
-    const configuration = {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-    };
-    const pc = new RTCPeerConnection(configuration);
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await sendSignalToParent({ type: "offer", offer, childDeviceId });
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        sendSignalToParent({
-          type: "candidate",
-          candidate: event.candidate,
-          childDeviceId,
-        });
-      }
-    };
-    pc.ontrack = (event) => {
-      console.log("Track received from parent:", event.streams[0]);
-    };
-    pc.setRemoteDescription(
-      new RTCSessionDescription(await getAnswerFromParent(childDeviceId))
-    );
-  };
-  const sendSignalToParent = async (signal) => {
-    console.log("Sending signal to parent:", signal);
-  };
-  const getAnswerFromParent = async (childDeviceId) => {
-    return new Promise((resolve) => {
-      setTimeout(() => resolve({ type: "answer", sdp: "dummy-answer" }), 2000);
-    });
-  };
+
   if (connected) {
     return (
-      <Center flex={1} bg="gray.100">
-        <Text fontSize="xl" color="green.500">
-          Connected to Parent Securely
+      <VStack flex={1} justifyContent="center" alignItems="center">
+        <Text fontSize="lg" color="green.600">
+          Connected to Parent!
         </Text>
-      </Center>
+      </VStack>
     );
   }
+
   return (
-    <Center flex={1} bg="gray.100">
-      <VStack space={6} alignItems="center" w="80%" maxW="300" p={5}>
-        <Text fontSize="2xl" fontWeight="bold" color="blue.600">
-          Childs App
+    <VStack
+      flex={1}
+      justifyContent="center"
+      alignItems="center"
+      bg="gray.100"
+      space={6}
+      p={5}
+    >
+      <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+        Child App
+      </Text>
+      <Text fontSize="lg" color="gray.500" textAlign="center">
+        Enter the pairing code from your parent.
+      </Text>
+      <Input
+        placeholder="Enter 6-digit code"
+        value={pairingCode}
+        onChangeText={setPairingCode}
+        variant="rounded"
+        w="80%"
+        maxW="300"
+        p={4}
+        fontSize="lg"
+        textAlign="center"
+        bg="white"
+        shadow={2}
+        keyboardType="numeric"
+        maxLength={6}
+      />
+      <Button
+        bg="blue.500"
+        onPress={connectToParent}
+        isDisabled={pairingCode.length < 6}
+      >
+        <Text fontSize="md" color="white">
+          Connect to Parent
         </Text>
-        <Text fontSize="lg" color="gray.500" textAlign="center">
-          Enter the pairing code provided by your parent to connect.
-        </Text>
-        <Input
-          value={pairingCode}
-          onChangeText={setPairingCode}
-          placeholder="Enter 6-digit code"
-          variant="rounded"
-          w="100%"
-          p={4}
-          fontSize="lg"
-          textAlign="center"
-          bg="white"
-          borderWidth={0}
-          shadow={2}
-          keyboardType="numeric"
-          maxLength={6}
-        />
-        <Button
-          onPress={handlePairing}
-          bg="blue.500"
-          _pressed={{ bg: "blue.600" }}
-          _hover={{ bg: "blue.400" }}
-          isDisabled={pairingCode.length < 6}
-        >
-          <Text fontSize="md" color="white">
-            Connect to Parent
-          </Text>
-        </Button>
-        {error && (
-          <Text fontSize="sm" color="red.500" textAlign="center">
-            {error}
-          </Text>
-        )}
-      </VStack>
-    </Center>
+      </Button>
+    </VStack>
   );
 }

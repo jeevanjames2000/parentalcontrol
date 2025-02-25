@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
   VStack,
-  HStack,
-  Button,
   Text,
   Box,
   Image,
-  useTheme,
   Pressable,
   Center,
   Spinner,
@@ -19,7 +16,7 @@ export default function InitialPage() {
   const navigation = useNavigation();
   const [selectedApp, setSelectedApp] = useState(null);
   const [fadeAnim] = useState(new Animated.Value(0));
-  const theme = useTheme();
+
   useEffect(() => {
     const loadAppType = async () => {
       setTimeout(async () => {
@@ -86,6 +83,10 @@ export default function InitialPage() {
       </Center>
     );
   }
+
+  // useEffect(() => {
+  //   AsyncStorage.clear();
+  // }, []);
   return (
     <VStack
       flex={1}

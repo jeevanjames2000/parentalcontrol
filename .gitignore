@@ -37,11 +37,12 @@ yarn-error.*
 *.tsbuildinfo
 
 # Firebase
-android/app/google-services.json
-ios/GoogleService-Info.plist
+# android/app/google-services.json
+# ios/GoogleService-Info.plist
 
 # Ignore the entire Android folder (optional, if not modifying native code)
-android/
+/android
+/ios
 parentalcontrol-79411-firebase-adminsdk-fbsvc-f7971f1632.json
 
 android\app\google-services.json

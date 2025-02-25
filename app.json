@@ -13,14 +13,28 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera.",
+        "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs access to your Microphone."
+      }
     },
     "android": {
+      "googleServicesFile": "./android/app/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.jeevansekhar.parentalcontrol"
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.jeevansekhar.parentalcontrol",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA22MekJT9iUiCpAnL6S9HEfmYMIjljah8"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +44,17 @@
         "projectId": "fd8ec37c-b4df-44bb-8aa1-dea80f45531a"
       }
     },
-    "owner": "jeevansekhar.t"
+    "owner": "jeevansekhar.t",
+    "plugins": [
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera.",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "$(PRODUCT_NAME) needs access to your Microphone.",
+          "enableCodeScanner": true
+        }
+      ]
+    ]
   }
 }
