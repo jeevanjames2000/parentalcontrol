@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  StyleSheet,
-  PermissionsAndroid,
-  Platform,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import {
   VStack,
   HStack,
@@ -26,53 +19,82 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSelector } from "react-redux";
 export default function Home() {
-  const [selectedDevice, setSelectedDevice] = useState("Google Pixel 6a");
   const { isOpen, onOpen, onClose } = useDisclose();
-  const [location, setLocation] = useState(null);
+  const [childLocation, setChildLocation] = useState(null);
   const [region, setRegion] = useState(null);
+  const [childContacts, setChildContacts] = useState([]);
   const mapRef = useRef(null);
+  const navigation = useNavigation();
+  const childData = useSelector((state) => state.child);
   useEffect(() => {
-    (async () => {
+    const initializeMapAndSocket = async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         console.log("Permission to access location was denied");
         return;
       }
-      let location = await Location.getCurrentPositionAsync({});
+      let parentLocation = await Location.getCurrentPositionAsync({});
       setRegion({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        latitude: parentLocation.coords.latitude,
+        longitude: parentLocation.coords.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
-    })();
-  }, []);
-  const goToCurrentLocation = async () => {
-    let location = await Location.getCurrentPositionAsync({});
-    const { latitude, longitude } = location.coords;
-    setRegion({
-      latitude,
-      longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
-    if (mapRef.current) {
+      if (childData && childData.location) {
+        setChildLocation(childData.location);
+        setChildContacts(childData.contacts || []);
+        setRegion({
+          latitude: childData.location.lat,
+          longitude: childData.location.lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      }
+    };
+    initializeMapAndSocket();
+  }, [childData]);
+  const goToChildLocation = () => {
+    if (childLocation && mapRef.current) {
       mapRef.current.animateToRegion({
-        latitude,
-        longitude,
+        latitude: childLocation.lat,
+        longitude: childLocation.lng,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
     }
   };
-  const navigation = useNavigation();
   const goBack = () => {
     navigation.navigate("InitialPage");
     AsyncStorage.clear();
   };
+  const FeatureBox = ({ title, children }) => (
+    <Box bg="white" p={4} borderRadius={8} m={2} shadow={2}>
+      <Text fontSize="md" fontWeight="bold">
+        {title}
+      </Text>
+      <HStack justifyContent="space-around" alignItems="center" mt={2}>
+        {children}
+      </HStack>
+    </Box>
+  );
+  const FeatureButton = ({ iconName, label, onPress }) => (
+    <Pressable
+      onPress={onPress}
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      p={2}
+    >
+      <Icon as={MaterialIcons} name={iconName} size={8} color="purple.500" />
+      <Text fontSize="xs" color="gray.500">
+        {label}
+      </Text>
+    </Pressable>
+  );
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -88,8 +110,8 @@ export default function Home() {
           <HStack justifyContent="space-between" alignItems="center" p={2}>
             <HStack alignItems="center" justifyContent="left" p={2} space={2}>
               <Avatar bg="blue.500" size="md">
-                {selectedDevice.split(" ")[0][0] +
-                  selectedDevice.split(" ")[1][0]}
+                {childData?.deviceInfo?.deviceName.split(" ")[0][0] +
+                  childData?.deviceInfo?.deviceName.split(" ")[1][0]}
               </Avatar>
               <Button
                 variant="outline"
@@ -106,14 +128,14 @@ export default function Home() {
                   />
                 }
               >
-                <Text>{selectedDevice}</Text>
+                <Text>{childData?.deviceInfo?.deviceName}</Text>
               </Button>
             </HStack>
             <IconButton
               icon={
                 <Icon
                   as={MaterialIcons}
-                  name="add"
+                  name="logout"
                   size="lg"
                   color="blue.500"
                 />
@@ -122,7 +144,7 @@ export default function Home() {
             />
           </HStack>
         </View>
-        <Pressable onPress={() => console.log("View Detailed Data")}>
+        <Pressable>
           <Box bg="white" p={4} borderRadius={8} m={2} shadow={2}>
             <HStack justifyContent="space-between" alignItems="center">
               <Text fontSize="md" fontWeight="bold">
@@ -160,183 +182,91 @@ export default function Home() {
               ref={mapRef}
               style={styles.map}
               provider={PROVIDER_GOOGLE}
-              initialRegion={region}
               region={region}
               showsUserLocation={true}
               showsMyLocationButton={false}
             >
-              {region && (
+              {childLocation && (
                 <Marker
                   coordinate={{
-                    latitude: region.latitude,
-                    longitude: region.longitude,
+                    latitude: childLocation.lat,
+                    longitude: childLocation.lng,
                   }}
-                  title="You are here"
+                  title="Child Location"
                 />
               )}
             </MapView>
             <TouchableOpacity
               style={styles.locationButton}
-              onPress={goToCurrentLocation}
+              onPress={goToChildLocation}
             >
               <Ionicons name="locate" size={18} color="white" />
             </TouchableOpacity>
           </View>
-          {location && (
+          {childLocation ? (
             <HStack justifyContent="space-between" alignItems="center" mt={2}>
               <Text fontSize="xs" color="gray.500">
-                Geofence: Outside
+                Lat: {childLocation.lat.toFixed(4)}, Lng:{" "}
+                {childLocation.lng.toFixed(4)}
               </Text>
               <Text fontSize="xs" color="gray.500">
-                Update:{" "}
-                {Math.floor(
-                  (Date.now() - (new Date().getTime() - 29 * 60 * 1000)) / 60000
-                )}{" "}
-                minutes ago
+                Updated: Just now
               </Text>
             </HStack>
+          ) : (
+            <Text fontSize="xs" color="gray.500" mt={2}>
+              Waiting for child's location...
+            </Text>
           )}
         </Box>
-        <Box bg="white" p={4} borderRadius={8} m={2} shadow={2}>
-          <Text fontSize="md" fontWeight="bold">
-            Snapshot
-          </Text>
-          <HStack justifyContent="space-around" alignItems="center" mt={2}>
-            <Pressable
-              onPress={() => console.log("Camera Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="photo-camera"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Camera Snapshot
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => console.log("Screen Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="screenshot-monitor"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Screen Snapshot
-              </Text>
-            </Pressable>
-          </HStack>
-        </Box>
-        <Box bg="white" p={4} borderRadius={8} m={2} shadow={2}>
-          <Text fontSize="md" fontWeight="bold">
-            Live Monitoring
-          </Text>
-          <HStack justifyContent="space-around" alignItems="center" mt={2}>
-            <Pressable
-              onPress={() => console.log("Camera Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="videocam"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Remote Camera
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => console.log("Screen Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="screen-share"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Screen Mirroring
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => console.log("Screen Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="mic"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Live Audio
-              </Text>
-            </Pressable>
-          </HStack>
-        </Box>
-        <Box bg="white" p={4} borderRadius={8} m={2} shadow={2}>
-          <Text fontSize="md" fontWeight="bold">
-            Device Activity
-          </Text>
-          <HStack justifyContent="space-around" alignItems="center" mt={2}>
-            <Pressable
-              onPress={() => console.log("Camera Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="timer"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Usage Limits
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => console.log("Screen Snapshot")}
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
-              <Icon
-                as={MaterialIcons}
-                name="apps"
-                size="lg"
-                color="purple.500"
-              />
-              <Text fontSize="xs" color="gray.500">
-                Apps List
-              </Text>
-            </Pressable>
-          </HStack>
-        </Box>
+        <FeatureBox title="Snapshot">
+          <FeatureButton
+            iconName="photo-camera"
+            label="Camera Snapshot"
+            onPress={() => console.log("Camera Snapshot")}
+          />
+          <FeatureButton
+            iconName="screenshot-monitor"
+            label="Screen Snapshot"
+            onPress={() => console.log("Screen Snapshot")}
+          />
+        </FeatureBox>
+        <FeatureBox title="Live Monitoring">
+          <FeatureButton
+            iconName="videocam"
+            label="Remote Camera"
+            onPress={() => console.log("Remote Camera")}
+          />
+          <FeatureButton
+            iconName="screen-share"
+            label="Screen Mirroring"
+            onPress={() => console.log("Screen Mirroring")}
+          />
+          <FeatureButton
+            iconName="mic"
+            label="Live Audio"
+            onPress={() => console.log("Live Audio")}
+          />
+        </FeatureBox>
+        <FeatureBox title="Device Activity">
+          <FeatureButton
+            iconName="timer"
+            label="Usage Limits"
+            onPress={() => console.log("Usage Limits")}
+          />
+          <FeatureButton
+            iconName="contacts"
+            label="Contacts"
+            onPress={() =>
+              navigation.navigate("Contacts", { contacts: childContacts })
+            }
+          />
+          <FeatureButton
+            iconName="apps"
+            label="Apps List"
+            onPress={() => navigation.navigate("AppsList")}
+          />
+        </FeatureBox>
         <Actionsheet isOpen={isOpen} onClose={onClose}>
           <Actionsheet.Content>
             <Actionsheet.Item
@@ -345,15 +275,7 @@ export default function Home() {
                 onClose();
               }}
             >
-              Google Pixel 6a
-            </Actionsheet.Item>
-            <Actionsheet.Item
-              onPress={() => {
-                setSelectedDevice("Device 2");
-                onClose();
-              }}
-            >
-              Device 2
+              {childData?.deviceInfo?.deviceName}
             </Actionsheet.Item>
           </Actionsheet.Content>
         </Actionsheet>
