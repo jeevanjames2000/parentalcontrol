@@ -3,23 +3,17 @@ import { View, Text, FlatList, Icon, Pressable, HStack } from "native-base";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-const apps = [
-  { name: "Call Logs", icon: "call" },
-  { name: "Gallery", icon: "image" },
-  { name: "Messages", icon: "chat-bubble" },
-  { name: "Camera", icon: "camera" },
-  { name: "Contacts", icon: "person" },
-  { name: "Settings", icon: "settings" },
-  { name: "Clock", icon: "alarm" },
-  { name: "Maps", icon: "map" },
-  { name: "Music", icon: "music-note" },
-  { name: "Videos", icon: "videocam" },
-];
+
+const apps = [{ name: "Call Logs", icon: "call" }];
+
 export default function AppsList() {
   const navigation = useNavigation();
-  const handleRoute = () => {
+
+  const handleRoute = (item) => {
+    // Navigate to the screen based on the item's name
     navigation.navigate(item.name);
   };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
       <HStack alignItems="center" p={4}>
@@ -47,7 +41,7 @@ export default function AppsList() {
             }}
           >
             <Pressable
-              onPress={handleRoute}
+              onPress={() => handleRoute(item)} // Pass the item to handleRoute
               display="flex"
               flexDirection="column"
               alignItems="center"

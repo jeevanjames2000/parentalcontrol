@@ -30,6 +30,7 @@ export default function Home() {
   const mapRef = useRef(null);
   const navigation = useNavigation();
   const childData = useSelector((state) => state.child);
+
   useEffect(() => {
     const initializeMapAndSocket = async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -110,8 +111,8 @@ export default function Home() {
           <HStack justifyContent="space-between" alignItems="center" p={2}>
             <HStack alignItems="center" justifyContent="left" p={2} space={2}>
               <Avatar bg="blue.500" size="md">
-                {childData?.deviceInfo?.deviceName.split(" ")[0][0] +
-                  childData?.deviceInfo?.deviceName.split(" ")[1][0]}
+                {/* {childData?.deviceInfo?.deviceName.split(" ")[0][0] +
+                  childData?.deviceInfo?.deviceName.split(" ")[1][0]} */}
               </Avatar>
               <Button
                 variant="outline"

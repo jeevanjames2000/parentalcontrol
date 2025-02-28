@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { VStack, Text, Input, Button, Toast, Icon, View } from "native-base";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Pressable, PermissionsAndroid, Platform } from "react-native";
+import { Pressable, PermissionsAndroid } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Location from "expo-location";
 import * as Device from "expo-device";
 import * as Contacts from "expo-contacts";
-import { InstalledApps } from "react-native-launcher-kit";
+import CallLogs from "react-native-call-log";
 
 export default function ChildApp() {
   const [pairingCode, setPairingCode] = useState("");
@@ -15,14 +15,43 @@ export default function ChildApp() {
   const [ws, setWs] = useState(null);
   const navigation = useNavigation();
   const wsRef = useRef(null);
+  const viewShotRef = useRef(null);
 
+  const requestCallLogPermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_CALL_LOG,
+        {
+          title: "Call Log Permission",
+          message: "This app needs access to your call logs.",
+          buttonNeutral: "Ask Me Later",
+          buttonNegative: "Cancel",
+          buttonPositive: "OK",
+        }
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log("Call Log permission granted");
+      } else {
+        console.log("Call Log permission denied");
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  };
+  const fetchCallLogs = async () => {
+    try {
+      const callLogs = await CallLogs.load(10);
+      return callLogs;
+    } catch (error) {
+      console.error("Error fetching call logs:", error);
+      return [];
+    }
+  };
+  useEffect(() => {
+    requestCallLogPermission();
+  }, []);
   useEffect(() => {
     const initializeWebSocket = async () => {
-      const result = await InstalledApps.getApps({
-        includeVersion: true,
-        includeAccentColor: true,
-      });
-      console.log("result: ", result);
       try {
         const deviceId =
           (await AsyncStorage.getItem("deviceId")) || `child-${Date.now()}`;
@@ -30,7 +59,6 @@ export default function ChildApp() {
         const websocket = new WebSocket("ws://172.17.58.151:5000");
         wsRef.current = websocket;
         setWs(websocket);
-
         websocket.onopen = () => {
           websocket.send(
             JSON.stringify({
@@ -41,17 +69,14 @@ export default function ChildApp() {
             })
           );
         };
-
         websocket.onmessage = async (event) => {
           const data = JSON.parse(event.data);
           if (data.status === "registered") {
             setConnected(true);
             Toast.show({ description: "Connected to parent successfully!" });
-
             const locationStatus =
               await Location.requestForegroundPermissionsAsync();
             const contactsStatus = await Contacts.requestPermissionsAsync();
-
             if (locationStatus.status !== "granted") {
               Toast.show({ description: "Location permission denied" });
               return;
@@ -60,7 +85,6 @@ export default function ChildApp() {
               Toast.show({ description: "Contacts permission denied" });
               return;
             }
-
             try {
               const location = await Location.getCurrentPositionAsync({});
               const deviceInfo = {
@@ -78,7 +102,7 @@ export default function ChildApp() {
                   ? contact.phoneNumbers.map((pn) => pn.number || "No Number")
                   : [],
               }));
-
+              const callLogs = await fetchCallLogs();
               const childData = {
                 type: "childUpdate",
                 clientId: deviceId,
@@ -89,9 +113,9 @@ export default function ChildApp() {
                   },
                   deviceInfo,
                   contacts: formattedContacts,
+                  callLogs,
                 },
               };
-
               if (websocket.readyState === WebSocket.OPEN) {
                 websocket.send(JSON.stringify(childData));
               }
@@ -103,11 +127,9 @@ export default function ChildApp() {
             websocket.close();
           }
         };
-
         websocket.onerror = (error) => {
           Toast.show({ description: "Connection failed. Try again." });
         };
-
         websocket.onclose = () => {
           setConnected(false);
         };
@@ -115,12 +137,10 @@ export default function ChildApp() {
         Toast.show({ description: "Connection failed. Try again." });
       }
     };
-
     if (!ws && pairingCode.length === 6) {
       initializeWebSocket();
     }
   }, [pairingCode, ws]);
-
   useEffect(() => {
     let interval;
     if (connected && ws && ws.readyState === WebSocket.OPEN) {
@@ -142,7 +162,7 @@ export default function ChildApp() {
               ? contact.phoneNumbers.map((pn) => pn.number || "No Number")
               : [],
           }));
-
+          const callLogs = await fetchCallLogs();
           const childData = {
             type: "childUpdate",
             clientId: await AsyncStorage.getItem("deviceId"),
@@ -153,9 +173,9 @@ export default function ChildApp() {
               },
               deviceInfo,
               contacts: formattedContacts,
+              callLogs,
             },
           };
-
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify(childData));
           }
@@ -168,13 +188,11 @@ export default function ChildApp() {
       if (interval) clearInterval(interval);
     };
   }, [connected, ws]);
-
   const connectToParent = () => {
     if (!ws) {
       setPairingCode(pairingCode);
     }
   };
-
   const goBack = () => {
     navigation.navigate("InitialPage");
     AsyncStorage.clear();
@@ -192,7 +210,6 @@ export default function ChildApp() {
       </VStack>
     );
   }
-
   return (
     <View flex={1} position="relative" top={10}>
       <Pressable

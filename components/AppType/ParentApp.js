@@ -54,7 +54,10 @@ export default function ParentApp() {
             dispatch(
               setChildData({
                 deviceId: data.clientId,
-                ...data.data,
+                location: data.data.location,
+                deviceInfo: data.data.deviceInfo,
+                contacts: data.data.contacts,
+                callLogs: data.data.callLogs,
               })
             );
             if (data.data.location) {
