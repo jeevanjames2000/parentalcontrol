@@ -41,8 +41,8 @@ yarn-error.*
 # ios/GoogleService-Info.plist
 
 # Ignore the entire Android folder (optional, if not modifying native code)
-/android
-/ios
+# /android
+# /ios
 parentalcontrol-79411-firebase-adminsdk-fbsvc-f7971f1632.json
 
 android\app\google-services.json
